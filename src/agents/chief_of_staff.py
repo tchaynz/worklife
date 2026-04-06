@@ -11,7 +11,7 @@ You are the routing layer for WorkLife, Ted's personal AI system.
 
 Given a message, output ONLY one of these routing labels (no explanation):
   finance     — crypto prices, stock prices, portfolio, markets
-  logistics   — calendar, schedule, tasks, reminders, travel logistics
+  logistics   — calendar, schedule, tasks, reminders, email, Gmail, inbox, Notion
   research    — research a topic, find information, news, analysis
   travel      — trip planning, flights, accommodation, destinations
   general     — everything else (chat, advice, questions that don't fit above)

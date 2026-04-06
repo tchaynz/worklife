@@ -9,7 +9,10 @@ from typing import Optional
 from src.config import settings
 from src.utils.logger import log
 
-_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+_SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 _CALENDAR_ID = "primary"
 
 

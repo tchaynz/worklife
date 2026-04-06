@@ -187,7 +187,36 @@ Calendar and schedule awareness.
 
 **Done when:** You can ask about your schedule via WhatsApp and get calendar-aware responses.
 
-### Phase 5: Research Scout + Travel Planner (Week 4-5)
+### Phase 4b: Logistics Manager Upgrade — Gmail + Notion
+Expand the Logistics Manager beyond calendar to cover email and Notion.
+
+**Tasks:**
+1. Gmail integration (read-only):
+   - OAuth2 setup (same Google Cloud project, add Gmail API scope)
+   - Read recent unread emails, surface important ones
+   - Summarize threads on demand
+2. Notion integration:
+   - Connect to Notion API (integration token)
+   - Read pages/databases Ted specifies (tasks, notes, projects)
+   - Surface relevant Notion context when asked
+3. Update Logistics Manager agent with new tools: get_emails, get_notion_page
+4. Update CoS routing to handle email/Notion queries → Logistics
+
+**Done when:** "What emails do I need to deal with?" and "What's in my Notion inbox?" work via WhatsApp.
+
+### Phase 5: Scheduled Tasks + Proactive Alerts
+Make it always-on, not just reactive.
+
+**Tasks:**
+1. Add APScheduler for recurring tasks (runs inside the Railway container)
+2. Finance Analyst: daily portfolio check at 9am ET, alert on >5% moves
+3. Logistics Manager: morning briefing at 7am ET — schedule + unread emails + Notion todos
+4. Implement outbound WhatsApp messaging (agent-initiated, not just replies)
+5. Add rate limiting and error handling for all external APIs
+
+**Done when:** You wake up to a WhatsApp message from WorkLife with your morning briefing without having asked for it.
+
+### Phase 6: Research Scout + Travel Planner
 Remaining specialist agents.
 
 **Tasks:**
@@ -202,20 +231,7 @@ Remaining specialist agents.
    - Integrates with calendar for availability awareness
 4. Test both via WhatsApp
 
-**Done when:** All four specialists respond accurately to domain-specific queries.
-
-### Phase 6: Scheduled Tasks + Proactive Alerts (Week 5-6)
-Make it always-on, not just reactive.
-
-**Tasks:**
-1. Add APScheduler or Railway cron jobs for recurring tasks
-2. Finance Analyst: daily portfolio check at 9am ET, alert on >5% moves
-3. Logistics Manager: morning briefing at 7am ET with today's schedule
-4. Research Scout: weekly digest of topics you've flagged
-5. Implement outbound WhatsApp messaging (agent-initiated, not just replies)
-6. Add rate limiting and error handling for all external APIs
-
-**Done when:** You wake up to a WhatsApp message from WorkLife with your morning briefing without having asked for it.
+**Done when:** All specialists respond accurately to domain-specific queries.
 
 ### Phase 7: Deploy + Harden (Week 6)
 Production-ready on Railway.

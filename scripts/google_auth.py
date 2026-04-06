@@ -25,7 +25,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
 load_dotenv()
 
-_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+_SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 
 
 def main() -> None:
