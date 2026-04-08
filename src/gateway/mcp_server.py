@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
 
-from src.config import settings
 from src.memory.store import get_or_create_conversation, save_message
 from src.utils.logger import log
 
@@ -32,22 +29,6 @@ async def ask_worklife(message: str) -> str:
     return reply
 
 
-class _BearerAuthMiddleware(BaseHTTPMiddleware):
-    """Reject requests that don't carry the correct Bearer token."""
-
-    def __init__(self, app, api_key: str) -> None:
-        super().__init__(app)
-        self._api_key = api_key
-
-    async def dispatch(self, request, call_next):
-        if self._api_key:
-            auth = request.headers.get("authorization", "")
-            if not auth.startswith("Bearer ") or auth[7:] != self._api_key:
-                return JSONResponse({"error": "Unauthorized"}, status_code=401)
-        return await call_next(request)
-
-
 def get_mcp_asgi_app():
-    """Return the MCP server wrapped with Bearer auth, ready to mount in FastAPI."""
-    inner = mcp.streamable_http_app()
-    return _BearerAuthMiddleware(inner, api_key=settings.mcp_api_key)
+    """Return the MCP server as an ASGI app, ready to mount in FastAPI."""
+    return mcp.streamable_http_app()
