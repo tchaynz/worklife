@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from src.agents.base import AgentResponse, BaseAgent, registry
+from src.agents.base import AgentResponse, BaseAgent, build_message_history, registry
 from src.memory.context import format_memories_for_prompt
 from src.tools.calendar import (
     get_todays_events,
@@ -205,45 +205,7 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
 
 
 def _build_history(stored_messages: list[dict], new_message: str) -> list[dict]:
-    """Convert stored DB messages into the Anthropic messages format.
-
-    Handles content that was stored as a JSON string (e.g. assistant messages
-    with tool_use blocks) by parsing it back into the original list structure.
-    Filters out any messages with empty or None content.
-    """
-    history = []
-    for m in stored_messages:
-        role = m.get("role")
-        content = m.get("content", "")
-        if role not in ("user", "assistant"):
-            continue
-
-        # Content may have been serialised as a JSON string when stored in the
-        # database (e.g. a list of tool_use blocks from an assistant turn).
-        # Always attempt to parse strings — _serialize_content in store.py
-        # guarantees that any list/dict was JSON-encoded before storage.
-        if isinstance(content, str):
-            try:
-                parsed = json.loads(content)
-                # Only use the parsed value if it's a list or dict; a bare
-                # JSON string like "\"hello\"" should stay as a plain string.
-                if isinstance(parsed, (list, dict)):
-                    content = parsed
-            except (json.JSONDecodeError, ValueError):
-                pass  # Not JSON — treat as a plain string
-
-        # Skip messages with empty or None content
-        if content is None:
-            continue
-        if isinstance(content, str) and not content.strip():
-            continue
-        if isinstance(content, list) and not content:
-            continue
-
-        history.append({"role": role, "content": content})
-
-    history.append({"role": "user", "content": new_message})
-    return history
+    return build_message_history(stored_messages, new_message)
 
 
 # Register on import

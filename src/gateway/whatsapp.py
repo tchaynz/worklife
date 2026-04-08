@@ -19,6 +19,11 @@ async def whatsapp_webhook(request: Request) -> Response:
         body_length=len(msg.body),
     )
 
+    if not msg.body.strip():
+        resp = MessagingResponse()
+        resp.message("I didn't catch that — could you send your message again?")
+        return Response(content=str(resp), media_type="application/xml")
+
     try:
         conversation_id = await get_or_create_conversation(msg.from_number)
         await save_message(conversation_id, role="user", content=msg.body)
