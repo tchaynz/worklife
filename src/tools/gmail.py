@@ -152,24 +152,16 @@ async def get_unread_emails(max_results: int = 10) -> list[dict]:
 
 async def search_emails(query: str, max_results: int = 10) -> list[dict]:
     """Search emails using a Gmail query string (supports read and unread)."""
-    try:
-        emails = await asyncio.to_thread(_fetch_emails_sync, query, max_results)
-        log.info("gmail_search_fetched", query=query, count=len(emails))
-        return emails
-    except Exception as exc:
-        log.error("gmail_search_error", query=query, error=str(exc))
-        return []
+    emails = await asyncio.to_thread(_fetch_emails_sync, query, max_results)
+    log.info("gmail_search_fetched", query=query, count=len(emails))
+    return emails
 
 
 async def get_thread(thread_id: str) -> list[dict]:
     """Fetch all messages in a Gmail thread."""
-    try:
-        messages = await asyncio.to_thread(_fetch_thread_sync, thread_id)
-        log.info("gmail_thread_fetched", thread_id=thread_id, count=len(messages))
-        return messages
-    except Exception as exc:
-        log.error("gmail_thread_error", thread_id=thread_id, error=str(exc))
-        return []
+    messages = await asyncio.to_thread(_fetch_thread_sync, thread_id)
+    log.info("gmail_thread_fetched", thread_id=thread_id, count=len(messages))
+    return messages
 
 
 def _build_mime_message(to: str, subject: str, body: str) -> dict:

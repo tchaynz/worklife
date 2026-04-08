@@ -141,28 +141,44 @@ _TOOLS = [
 
 
 async def _fetch_schedule(scope: str) -> str:
-    if scope == "tomorrow":
-        events = await get_tomorrows_events()
-    elif scope == "week":
-        events = await get_weeks_events()
-    else:
-        events = await get_todays_events()
-    return json.dumps({"scope": scope, "events": events})
+    try:
+        if scope == "tomorrow":
+            events = await get_tomorrows_events()
+        elif scope == "week":
+            events = await get_weeks_events()
+        else:
+            events = await get_todays_events()
+        return json.dumps({"scope": scope, "events": events})
+    except Exception as exc:
+        log.error("logistics_calendar_error", scope=scope, error=str(exc))
+        return json.dumps({"scope": scope, "error": str(exc), "events": []})
 
 
 async def _fetch_emails(max_results: int = 10) -> str:
-    emails = await get_unread_emails(max_results=max_results)
-    return json.dumps({"emails": emails})
+    try:
+        emails = await get_unread_emails(max_results=max_results)
+        return json.dumps({"emails": emails})
+    except Exception as exc:
+        log.error("logistics_get_emails_error", error=str(exc))
+        return json.dumps({"error": str(exc), "emails": []})
 
 
 async def _fetch_thread(thread_id: str) -> str:
-    messages = await get_thread(thread_id)
-    return json.dumps({"thread_id": thread_id, "messages": messages})
+    try:
+        messages = await get_thread(thread_id)
+        return json.dumps({"thread_id": thread_id, "messages": messages})
+    except Exception as exc:
+        log.error("logistics_get_thread_error", thread_id=thread_id, error=str(exc))
+        return json.dumps({"thread_id": thread_id, "error": str(exc), "messages": []})
 
 
 async def _search_emails(query: str, max_results: int = 10) -> str:
-    emails = await search_emails(query=query, max_results=max_results)
-    return json.dumps({"query": query, "emails": emails})
+    try:
+        emails = await search_emails(query=query, max_results=max_results)
+        return json.dumps({"query": query, "emails": emails})
+    except Exception as exc:
+        log.error("logistics_search_emails_error", query=query, error=str(exc))
+        return json.dumps({"query": query, "error": str(exc), "emails": []})
 
 
 class LogisticsAgent(BaseAgent):
