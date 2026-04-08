@@ -94,6 +94,28 @@ class FinanceAgent(BaseAgent):
         return AgentResponse(content=response_text, agent_name=self.name)
 
 
+def _sanitize_messages(messages: list[dict]) -> list[dict]:
+    """Validate and sanitize messages before sending to the Anthropic API.
+
+    Removes any messages with empty or None content to prevent 400 errors.
+    """
+    sanitized = []
+    for msg in messages:
+        content = msg.get("content")
+        # Drop messages with None or empty-string content
+        if content is None:
+            log.warning("finance_dropping_message_no_content", role=msg.get("role"))
+            continue
+        if isinstance(content, str) and not content.strip():
+            log.warning("finance_dropping_empty_message", role=msg.get("role"))
+            continue
+        if isinstance(content, list) and not content:
+            log.warning("finance_dropping_empty_list_message", role=msg.get("role"))
+            continue
+        sanitized.append(msg)
+    return sanitized
+
+
 async def _run_agent_loop(system: str, messages: list[dict]) -> str:
     """Run the tool-use agentic loop until Claude returns a final text response."""
     current_messages = list(messages)
@@ -101,7 +123,7 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
     for _ in range(3):  # max 3 tool calls before giving up
         response = await anthropic_client.complete_with_tools(
             system=system,
-            messages=current_messages,
+            messages=_sanitize_messages(current_messages),
             tools=_TOOLS,
             agent_name="finance",
         )
@@ -113,10 +135,15 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
         # Tool call requested
         if response["stop_reason"] == "tool_use":
             tool_calls = response["tool_calls"]
-            # Append assistant message with tool_use blocks
+
+            # Ensure raw_content is a non-empty list of dicts before appending
+            raw_content = response["raw_content"]
+            if not isinstance(raw_content, list) or not raw_content:
+                log.warning("finance_invalid_raw_content", raw_content=raw_content)
+                break
             current_messages.append({
                 "role": "assistant",
-                "content": response["raw_content"],
+                "content": raw_content,
             })
 
             # Execute each tool and collect results
@@ -147,13 +174,36 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
 
 
 def _build_history(stored_messages: list[dict], new_message: str) -> list[dict]:
-    """Convert stored DB messages into the Anthropic messages format."""
+    """Convert stored DB messages into the Anthropic messages format.
+
+    Handles content that was stored as a JSON string (e.g. assistant messages
+    with tool_use blocks) by parsing it back into the original list structure.
+    Filters out any messages with empty or None content.
+    """
     history = []
     for m in stored_messages:
         role = m.get("role")
         content = m.get("content", "")
-        if role in ("user", "assistant"):
-            history.append({"role": role, "content": content})
+        if role not in ("user", "assistant"):
+            continue
+
+        # Content may have been serialised as a JSON string when stored in the
+        # database (e.g. a list of tool_use blocks). Parse it back if so.
+        if isinstance(content, str) and content.startswith(("[", "{")):
+            try:
+                content = json.loads(content)
+            except json.JSONDecodeError:
+                pass  # Not valid JSON — treat as a plain string
+
+        # Skip messages with empty or None content
+        if content is None:
+            continue
+        if isinstance(content, str) and not content.strip():
+            continue
+        if isinstance(content, list) and not content:
+            continue
+
+        history.append({"role": role, "content": content})
 
     history.append({"role": "user", "content": new_message})
     return history
