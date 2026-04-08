@@ -10,7 +10,7 @@ from src.tools.calendar import (
     get_tomorrows_events,
     get_weeks_events,
 )
-from src.tools.gmail import get_thread, get_unread_emails
+from src.tools.gmail import get_thread, get_unread_emails, search_emails
 from src.utils.anthropic_client import client as anthropic_client
 from src.utils.logger import log
 
@@ -26,11 +26,15 @@ Schedule, calendar, email, and day-to-day logistics. You help Ted understand his
 ## Your Tools
 - get_schedule: fetch Ted's Google Calendar events
 - get_emails: fetch Ted's recent unread emails
+- search_emails: search any emails (read or unread) using Gmail query syntax — use this when Ted asks about a specific email, sender, subject, or time period
 - get_thread: fetch all messages in a specific email thread
 
 When asked about schedule or calendar, call get_schedule first.
-When asked about email, call get_emails first.
+When asked about unread/new emails, call get_emails first.
+When asked about a specific email or past emails (already read), call search_emails with an appropriate query.
 Always fetch live data before answering — never guess.
+
+Gmail query syntax examples: "from:boss@example.com", "subject:invoice", "after:2026/04/01", "from:amazon".
 
 ## How You Respond
 - Lead with the most important thing
@@ -72,6 +76,25 @@ _TOOLS = [
         },
     },
     {
+        "name": "search_emails",
+        "description": "Search Ted's Gmail using a query string. Use this to find read or unread emails by sender, subject, date, or any other criteria. Supports Gmail search syntax: 'from:someone@example.com', 'subject:invoice', 'after:2026/04/01', etc.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Gmail search query. Examples: 'from:boss@co.com', 'subject:receipt after:2026/04/01', 'from:amazon'.",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Number of results to return. Default: 10.",
+                    "default": 10,
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
         "name": "get_thread",
         "description": "Fetch the full message thread for a specific email thread ID.",
         "input_schema": {
@@ -106,6 +129,11 @@ async def _fetch_emails(max_results: int = 10) -> str:
 async def _fetch_thread(thread_id: str) -> str:
     messages = await get_thread(thread_id)
     return json.dumps({"thread_id": thread_id, "messages": messages})
+
+
+async def _search_emails(query: str, max_results: int = 10) -> str:
+    emails = await search_emails(query=query, max_results=max_results)
+    return json.dumps({"query": query, "emails": emails})
 
 
 class LogisticsAgent(BaseAgent):
@@ -180,6 +208,11 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
                     max_results = call["input"].get("max_results", 10)
                     result = await _fetch_emails(max_results)
                     log.info("logistics_tool_executed", tool="get_emails")
+                elif call["name"] == "search_emails":
+                    query = call["input"].get("query", "in:inbox")
+                    max_results = call["input"].get("max_results", 10)
+                    result = await _search_emails(query, max_results)
+                    log.info("logistics_tool_executed", tool="search_emails", query=query)
                 elif call["name"] == "get_thread":
                     thread_id = call["input"].get("thread_id", "")
                     result = await _fetch_thread(thread_id)

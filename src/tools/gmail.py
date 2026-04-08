@@ -101,14 +101,14 @@ def _parse_message(msg: dict, include_body: bool = False) -> dict:
     return result
 
 
-def _fetch_unread_sync(max_results: int = 10) -> list[dict]:
-    """Fetch unread inbox messages (sync)."""
+def _fetch_emails_sync(query: str, max_results: int = 10) -> list[dict]:
+    """Fetch inbox messages matching a Gmail query string (sync)."""
     service = _build_service()
 
     list_result = (
         service.users()
         .messages()
-        .list(userId=_USER_ID, q="is:unread in:inbox", maxResults=max_results)
+        .list(userId=_USER_ID, q=query, maxResults=max_results)
         .execute()
     )
 
@@ -145,12 +145,17 @@ def _fetch_thread_sync(thread_id: str) -> list[dict]:
 
 async def get_unread_emails(max_results: int = 10) -> list[dict]:
     """Fetch recent unread inbox emails."""
+    return await search_emails("is:unread in:inbox", max_results)
+
+
+async def search_emails(query: str, max_results: int = 10) -> list[dict]:
+    """Search emails using a Gmail query string (supports read and unread)."""
     try:
-        emails = await asyncio.to_thread(_fetch_unread_sync, max_results)
-        log.info("gmail_unread_fetched", count=len(emails))
+        emails = await asyncio.to_thread(_fetch_emails_sync, query, max_results)
+        log.info("gmail_search_fetched", query=query, count=len(emails))
         return emails
     except Exception as exc:
-        log.error("gmail_fetch_error", error=str(exc))
+        log.error("gmail_search_error", query=query, error=str(exc))
         return []
 
 
