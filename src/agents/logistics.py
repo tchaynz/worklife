@@ -10,7 +10,7 @@ from src.tools.calendar import (
     get_tomorrows_events,
     get_weeks_events,
 )
-from src.tools.gmail import get_thread, get_unread_emails, search_emails
+from src.tools.gmail import create_draft, get_thread, get_unread_emails, search_emails, send_email
 from src.utils.anthropic_client import client as anthropic_client
 from src.utils.logger import log
 
@@ -26,15 +26,18 @@ Schedule, calendar, email, and day-to-day logistics. You help Ted understand his
 ## Your Tools
 - get_schedule: fetch Ted's Google Calendar events
 - get_emails: fetch Ted's recent unread emails
-- search_emails: search any emails (read or unread) using Gmail query syntax — use this when Ted asks about a specific email, sender, subject, or time period
-- get_thread: fetch all messages in a specific email thread
+- search_emails: search any emails (read or unread) using Gmail query syntax
+- get_thread: fetch the full thread for a specific email
+- create_draft: compose a draft email for Ted to review before sending
+- send_email: send an email immediately on Ted's behalf
 
 When asked about schedule or calendar, call get_schedule first.
 When asked about unread/new emails, call get_emails first.
-When asked about a specific email or past emails (already read), call search_emails with an appropriate query.
-Always fetch live data before answering — never guess.
+When asked about a specific or past email, call search_emails.
+When Ted asks you to write or draft an email, use create_draft — always confirm recipient, subject, and body with him first unless all three are clearly stated.
+When Ted explicitly says to send (not just draft), use send_email.
 
-Gmail query syntax examples: "from:boss@example.com", "subject:invoice", "after:2026/04/01", "from:amazon".
+Gmail query syntax examples: "from:boss@example.com", "subject:invoice", "after:2026/04/01".
 
 ## How You Respond
 - Lead with the most important thing
@@ -106,6 +109,32 @@ _TOOLS = [
                 }
             },
             "required": ["thread_id"],
+        },
+    },
+    {
+        "name": "create_draft",
+        "description": "Create a draft email in Ted's Gmail for him to review and send later. Use this unless Ted explicitly asks to send immediately.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "to": {"type": "string", "description": "Recipient email address."},
+                "subject": {"type": "string", "description": "Email subject line."},
+                "body": {"type": "string", "description": "Plain text email body."},
+            },
+            "required": ["to", "subject", "body"],
+        },
+    },
+    {
+        "name": "send_email",
+        "description": "Send an email immediately from Ted's Gmail. Only use this when Ted explicitly says to send — otherwise use create_draft.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "to": {"type": "string", "description": "Recipient email address."},
+                "subject": {"type": "string", "description": "Email subject line."},
+                "body": {"type": "string", "description": "Plain text email body."},
+            },
+            "required": ["to", "subject", "body"],
         },
     },
 ]
@@ -217,6 +246,16 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
                     thread_id = call["input"].get("thread_id", "")
                     result = await _fetch_thread(thread_id)
                     log.info("logistics_tool_executed", tool="get_thread", thread_id=thread_id)
+                elif call["name"] == "create_draft":
+                    inp = call["input"]
+                    outcome = await create_draft(inp["to"], inp["subject"], inp["body"])
+                    result = json.dumps(outcome)
+                    log.info("logistics_tool_executed", tool="create_draft", to=inp.get("to"))
+                elif call["name"] == "send_email":
+                    inp = call["input"]
+                    outcome = await send_email(inp["to"], inp["subject"], inp["body"])
+                    result = json.dumps(outcome)
+                    log.info("logistics_tool_executed", tool="send_email", to=inp.get("to"))
                 else:
                     result = json.dumps({"error": f"unknown tool: {call['name']}"})
 

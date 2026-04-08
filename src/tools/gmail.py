@@ -1,10 +1,11 @@
-"""Gmail API — read Ted's emails (read-only)."""
+"""Gmail API — read, compose, and send Ted's emails."""
 from __future__ import annotations
 
 import asyncio
 import base64
 import json
 import re
+from email.mime.text import MIMEText
 from typing import Optional
 
 from src.config import settings
@@ -13,6 +14,7 @@ from src.utils.logger import log
 _SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.compose",
 ]
 _USER_ID = "me"
 
@@ -168,6 +170,51 @@ async def get_thread(thread_id: str) -> list[dict]:
     except Exception as exc:
         log.error("gmail_thread_error", thread_id=thread_id, error=str(exc))
         return []
+
+
+def _build_mime_message(to: str, subject: str, body: str) -> dict:
+    """Build a base64url-encoded MIME message ready for the Gmail API."""
+    msg = MIMEText(body, "plain")
+    msg["to"] = to
+    msg["subject"] = subject
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+    return {"raw": raw}
+
+
+def _create_draft_sync(to: str, subject: str, body: str) -> dict:
+    service = _build_service()
+    message = _build_mime_message(to, subject, body)
+    draft = service.users().drafts().create(userId=_USER_ID, body={"message": message}).execute()
+    return {"draft_id": draft["id"], "to": to, "subject": subject}
+
+
+def _send_email_sync(to: str, subject: str, body: str) -> dict:
+    service = _build_service()
+    message = _build_mime_message(to, subject, body)
+    sent = service.users().messages().send(userId=_USER_ID, body=message).execute()
+    return {"message_id": sent["id"], "to": to, "subject": subject}
+
+
+async def create_draft(to: str, subject: str, body: str) -> dict:
+    """Create a Gmail draft. Returns draft_id on success."""
+    try:
+        result = await asyncio.to_thread(_create_draft_sync, to, subject, body)
+        log.info("gmail_draft_created", to=to, subject=subject)
+        return result
+    except Exception as exc:
+        log.error("gmail_draft_error", to=to, subject=subject, error=str(exc))
+        return {"error": str(exc)}
+
+
+async def send_email(to: str, subject: str, body: str) -> dict:
+    """Send an email immediately. Returns message_id on success."""
+    try:
+        result = await asyncio.to_thread(_send_email_sync, to, subject, body)
+        log.info("gmail_sent", to=to, subject=subject)
+        return result
+    except Exception as exc:
+        log.error("gmail_send_error", to=to, subject=subject, error=str(exc))
+        return {"error": str(exc)}
 
 
 def format_emails_for_prompt(emails: list[dict], header: Optional[str] = None) -> str:
