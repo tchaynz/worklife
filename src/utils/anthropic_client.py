@@ -122,11 +122,17 @@ class AnthropicClient:
         raw_content = []
 
         for block in response.content:
-            raw_content.append(block)
             if block.type == "text":
                 text += block.text
+                raw_content.append({"type": "text", "text": block.text})
             elif block.type == "tool_use":
                 tool_calls.append({
+                    "id": block.id,
+                    "name": block.name,
+                    "input": block.input,
+                })
+                raw_content.append({
+                    "type": "tool_use",
                     "id": block.id,
                     "name": block.name,
                     "input": block.input,

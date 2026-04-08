@@ -135,7 +135,10 @@ async def _run_agent_loop(system: str, messages: list[dict]) -> str:
                     })
                     log.info("finance_tool_executed", tool="get_prices")
 
-            current_messages.append({"role": "user", "content": tool_results})
+            # Only append the user message if there are actual tool results;
+            # an empty content list would cause a 400 from the Anthropic API.
+            if tool_results:
+                current_messages.append({"role": "user", "content": tool_results})
             continue
 
         break  # unexpected stop reason
