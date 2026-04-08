@@ -188,12 +188,18 @@ def _build_history(stored_messages: list[dict], new_message: str) -> list[dict]:
             continue
 
         # Content may have been serialised as a JSON string when stored in the
-        # database (e.g. a list of tool_use blocks). Parse it back if so.
-        if isinstance(content, str) and content.startswith(("[", "{")):
+        # database (e.g. a list of tool_use blocks from an assistant turn).
+        # Always attempt to parse strings — _serialize_content in store.py
+        # guarantees that any list/dict was JSON-encoded before storage.
+        if isinstance(content, str):
             try:
-                content = json.loads(content)
-            except json.JSONDecodeError:
-                pass  # Not valid JSON — treat as a plain string
+                parsed = json.loads(content)
+                # Only use the parsed value if it's a list or dict; a bare
+                # JSON string like "\"hello\"" should stay as a plain string.
+                if isinstance(parsed, (list, dict)):
+                    content = parsed
+            except (json.JSONDecodeError, ValueError):
+                pass  # Not JSON — treat as a plain string
 
         # Skip messages with empty or None content
         if content is None:

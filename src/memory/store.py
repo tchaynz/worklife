@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Optional
+import json
+from typing import Optional, Union
 
 from supabase import Client, create_client
 
@@ -77,20 +78,40 @@ async def touch_conversation(conversation_id: str) -> None:
 # Messages
 # ---------------------------------------------------------------------------
 
+def _serialize_content(content: Union[str, list, dict]) -> str:
+    """Serialize message content to a string for database storage.
+
+    If content is a list or dict (e.g. tool_use blocks from an assistant
+    message), it is JSON-encoded so it can be round-tripped back to its
+    original structure when loaded via _build_history.  Plain strings are
+    stored as-is.
+    """
+    if isinstance(content, (list, dict)):
+        return json.dumps(content)
+    return content
+
+
 async def save_message(
     conversation_id: str,
     role: str,
-    content: str,
+    content: Union[str, list, dict],
     agent_name: Optional[str] = None,
 ) -> None:
-    """Persist a message to the messages table."""
+    """Persist a message to the messages table.
+
+    Content may be a plain string (normal user/assistant text) or a list of
+    content blocks (e.g. assistant messages containing tool_use blocks).
+    Lists and dicts are JSON-serialised before storage so they can be
+    faithfully reconstructed when the conversation history is reloaded.
+    """
     db = _get_client()
+    serialized = _serialize_content(content)
 
     def _insert():
         return db.table("messages").insert({
             "conversation_id": conversation_id,
             "role": role,
-            "content": content,
+            "content": serialized,
             "agent_name": agent_name,
         }).execute()
 
