@@ -20,7 +20,7 @@ app = FastAPI(title="WorkLife", version="0.1.0", lifespan=lifespan)
 app.include_router(whatsapp_router)
 
 from src.gateway.mcp_server import get_mcp_asgi_app  # noqa: E402
-app.mount("/mcp", get_mcp_asgi_app())
+app.mount("/", get_mcp_asgi_app())
 
 
 @app.get("/health")
