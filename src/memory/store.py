@@ -37,6 +37,7 @@ async def get_or_create_conversation(from_number: str) -> str:
         return (
             db.table("conversations")
             .select("id")
+            .eq("metadata->>from_number", from_number)
             .order("last_message_at", desc=True)
             .limit(1)
             .execute()

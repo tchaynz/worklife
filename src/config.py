@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     google_credentials_json: str = ""   # OAuth2 client secrets JSON (from Google Cloud Console)
     google_token_json: str = ""         # Serialized token (includes refresh_token)
 
+    # MCP server — Bearer token for claude.ai integration
+    mcp_api_key: str = ""
+
     model_config = {"env_file": ".env"}
 
 
