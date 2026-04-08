@@ -5,6 +5,9 @@ import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+_ET = ZoneInfo("America/Toronto")
 
 from src.config import settings
 from src.utils.logger import log
@@ -119,21 +122,21 @@ async def get_events(time_min: datetime, time_max: datetime) -> list[dict]:
 
 
 async def get_todays_events() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(_ET)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
     return await get_events(start, end)
 
 
 async def get_tomorrows_events() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(_ET)
     start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
     return await get_events(start, end)
 
 
 async def get_weeks_events() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(_ET)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=7)
     return await get_events(start, end)
